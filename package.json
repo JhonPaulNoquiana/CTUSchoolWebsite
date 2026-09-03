@@ -1,0 +1,16 @@
+{
+  "name": "noquiana-ap6",
+  "version": "1.0.0",
+  "description": "CTU Main Campus role-based school information, enrollment, scheduling, and billing portal",
+  "main": "backend/server.js",
+  "scripts": {
+    "start": "node backend/server.js",
+    "dev": "node --watch backend/server.js",
+    "db:setup": "node backend/scripts/seed.js"
+  },
+  "dependencies": {
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "pg": "^8.23.0"
+  }
+}
