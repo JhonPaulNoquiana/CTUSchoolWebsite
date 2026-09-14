@@ -1,5 +1,6 @@
-require('dotenv').config();
-const express=require('express'),path=require('path'),crypto=require('crypto'),pool=require('./config/db');
+const path=require('path');
+require('dotenv').config({path:path.join(__dirname,'.env')});
+const express=require('express'),crypto=require('crypto'),pool=require('./config/db');
 const app=express(),PORT=process.env.PORT||3000,SECRET=process.env.TOKEN_SECRET||'ctu-main-change-this-secret';
 app.disable('x-powered-by'); app.use(express.json({limit:'1mb'}));
 const wrap=fn=>(req,res,next)=>Promise.resolve(fn(req,res,next)).catch(next), b64=v=>Buffer.from(JSON.stringify(v)).toString('base64url');
@@ -95,6 +96,7 @@ app.patch('/api/cashier/payments/:id/void',auth,allow('cashier','admin'),wrap(as
 app.get('/api/clinic/visits',auth,allow('clinic','admin'),wrap(async(req,res)=>res.json((await pool.query(`SELECT v.*,u.employee_or_student_no student_no,u.first_name,u.last_name,staff.first_name||' '||staff.last_name attended_by_name FROM clinic_visits v JOIN students s ON s.id=v.student_id JOIN users u ON u.id=s.user_id LEFT JOIN users staff ON staff.id=v.attended_by ORDER BY v.visited_at DESC`)).rows)));
 app.post('/api/clinic/visits',auth,allow('clinic','admin'),wrap(async(req,res)=>{const b=req.body;if(!b.student_id||!b.complaint)return res.status(400).json({message:'Student and complaint are required.'});const q=await pool.query('INSERT INTO clinic_visits(student_id,attended_by,complaint,assessment,treatment,disposition,vital_signs)VALUES($1,$2,$3,$4,$5,$6,$7)RETURNING *',[b.student_id,req.user.id,b.complaint,b.assessment||null,b.treatment||null,b.disposition||'Returned to class',b.vital_signs||{}]);await audit(req.user.id,'RECORDED_CLINIC_VISIT','clinic_visit',q.rows[0].id);res.status(201).json(q.rows[0])}));
 
-app.use(express.static(path.join(__dirname,'../public'))); app.get('*path',(req,res)=>res.sendFile(path.join(__dirname,'../public/index.html')));
+const frontendDir=path.join(__dirname,'../frontend/dist');
+app.use(express.static(frontendDir)); app.get('*path',(req,res)=>res.sendFile(path.join(frontendDir,'index.html')));
 app.use((error,req,res,next)=>{console.error(error);const s=error.status||(/duplicate key/.test(error.message)?409:500);res.status(s).json({message:s===500?'Something went wrong while processing your request.':error.message})});
 app.listen(PORT,()=>console.log(`CTU Main Campus portal running at http://localhost:${PORT}`));

@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <rect width="64" height="64" rx="14" fill="#0a4d38"/>
+  <circle cx="32" cy="32" r="23" fill="none" stroke="#f2aa18" stroke-width="3"/>
+  <text x="32" y="38" text-anchor="middle" fill="#fff" font-family="Arial, sans-serif" font-size="17" font-weight="700">CTU</text>
+</svg>

@@ -6,15 +6,15 @@ A role-based school information system for Cebu Technological University – Mai
 
 | Layer | Technology | Purpose |
 |---|---|---|
-| Frontend | HTML5, CSS3, vanilla JavaScript | Responsive single-page interface and role dashboards |
+| Frontend | React 19, Vite, CSS3 | Responsive single-page interface and role dashboards |
 | Backend | Node.js and Express 5 | REST API, authentication, authorization, validation, and static-file hosting |
 | Database | PostgreSQL | Users, academic records, billing, clinic visits, requests, and audit records |
 | Database driver | `pg` | PostgreSQL connection pool and parameterized queries |
-| Configuration | `dotenv` | Loads `DATABASE_URL`, `TOKEN_SECRET`, and `PORT` from `.env` |
+| Configuration | `dotenv` | Loads `DATABASE_URL`, `TOKEN_SECRET`, and `PORT` from `backend/.env` |
 | Authentication | HMAC-signed bearer tokens | Eight-hour authenticated sessions |
 | Password security | PostgreSQL `pgcrypto` | Salted bcrypt-compatible password hashes using `crypt()` |
 
-No frontend framework or build step is required. Express serves the files inside `public/` directly.
+Vite runs the React frontend during development and creates the production bundle in `frontend/dist/`. Express serves that bundle in production and continues to provide the `/api` routes. The frontend and backend are independently installable applications.
 
 ## Project structure
 
@@ -26,14 +26,20 @@ NoquianaAP6/
 │   ├── scripts/
 │   │   ├── schema.sql         # Tables, enums, constraints, and indexes
 │   │   └── seed.js            # Schema runner and demonstration data
+│   ├── .env.example           # Backend environment variable template
+│   ├── package.json           # Express and PostgreSQL dependencies
 │   └── server.js              # Express server, authentication, and REST APIs
-├── public/
-│   ├── css/style.css          # Responsive UI styles
-│   ├── js/main.js             # SPA rendering and API interactions
-│   └── index.html             # Browser entry point
-├── .env.example               # Environment variable template
+├── frontend/
+│   ├── src/
+│   │   ├── legacy/portal.js   # Existing portal workflows mounted by React
+│   │   ├── styles/            # Responsive UI styles
+│   │   ├── App.jsx            # React application shell
+│   │   └── main.jsx           # React entry point
+│   ├── index.html             # Vite browser entry point
+│   ├── package.json           # React and Vite dependencies
+│   └── vite.config.mjs        # Dev server and API proxy configuration
 ├── notes.md                   # Detailed installation and run guide
-└── package.json               # Dependencies and npm commands
+└── README.md                  # Project overview
 ```
 
 ## System request flow
@@ -180,9 +186,15 @@ Foreign keys, unique constraints, validation checks, and indexes are defined in 
 ## npm commands
 
 ```bash
-npm start       # Start the application normally
-npm run dev     # Start with automatic restart after source changes
+cd backend
+npm install
 npm run db:setup # Create/update the schema and insert demo data
+npm run dev      # Start the Express API with automatic restart
+
+cd ../frontend
+npm install
+npm run dev      # Start the React development server
+npm run build    # Build frontend/dist for Express production serving
 ```
 
 For full setup instructions and demonstration credentials, see [notes.md](notes.md).

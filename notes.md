@@ -28,15 +28,16 @@ In PowerShell or a VS Code terminal:
 cd C:\Users\jpaul\NoquianaAP6
 ```
 
-All commands in this guide should be run from this directory.
+The repository contains two self-contained applications: `backend/` and `frontend/`.
 
 ## 3. Install Node.js dependencies
 
 ```bash
-npm install
+npm --prefix backend install
+npm --prefix frontend install
 ```
 
-This installs Express, the PostgreSQL driver, and dotenv according to `package.json`.
+The first command installs Express, PostgreSQL, and dotenv. The second installs React and Vite.
 
 ## 4. Create the PostgreSQL database
 
@@ -52,13 +53,13 @@ If the database is already connected and working, do not create it again.
 
 ## 5. Configure environment variables
 
-Copy `.env.example` to a new file named `.env`:
+Copy the backend environment template to `backend/.env`:
 
 ```powershell
-Copy-Item .env.example .env
+Copy-Item backend\.env.example backend\.env
 ```
 
-Open `.env` and enter the real PostgreSQL username, password, host, port, and database name:
+Open `backend/.env` and enter the real PostgreSQL username, password, host, port, and database name:
 
 ```env
 DATABASE_URL=postgresql://postgres:YOUR_PASSWORD@localhost:5432/SchoolDB
@@ -84,7 +85,7 @@ DATABASE_URL=postgresql://ctu_app:encoded-password@localhost:5432/SchoolDB
 Run:
 
 ```bash
-npm run db:setup
+npm --prefix backend run db:setup
 ```
 
 This command:
@@ -107,25 +108,32 @@ sections   5
 
 ## 7. Start the application
 
-Normal start:
+For a production-style start, build the frontend and start the backend:
 
 ```bash
-npm start
+npm --prefix frontend run build
+npm --prefix backend start
 ```
 
-The equivalent direct command is:
+Express serves the compiled React application from `frontend/dist`. The equivalent direct backend command is:
 
 ```bash
 node backend/server.js
 ```
 
-For development with automatic restart when files change:
+For development, use two terminals. Start the backend in the first:
 
 ```bash
-npm run dev
+npm --prefix backend run dev
 ```
 
-When startup succeeds, the terminal displays:
+Start the React frontend in the second:
+
+```bash
+npm --prefix frontend run dev
+```
+
+In development, Vite serves the website at `http://localhost:5173` and proxies `/api` requests to Express at `http://localhost:3000`. For a normal production-style start, the terminal displays:
 
 ```text
 CTU Main Campus portal running at http://localhost:3000
@@ -141,7 +149,7 @@ Visit:
 http://localhost:3000
 ```
 
-Do not open `public/index.html` directly from the file system. The page needs the Express server to access the API and database.
+When using the development commands, visit `http://localhost:5173` instead. Do not open `index.html` directly from the file system; the React application needs Vite or Express to access the API and database.
 
 ## Demonstration credentials
 
@@ -182,7 +190,7 @@ These accounts are for development and demonstration only. Change their password
 
 The Registrar does not need to send or know the student's password. Once activation succeeds, the same application cannot be used to reset the password again.
 
-Two sample applications are inserted by `npm run db:setup`:
+Two sample applications are inserted by `npm --prefix backend run db:setup`:
 
 - `CTU-ADM-2026-100001` — new student, submitted
 - `CTU-ADM-2026-100002` — transferee, under review
@@ -271,10 +279,11 @@ The server prevents payments greater than the remaining balance. Students see as
 After the first setup, the usual workflow is:
 
 ```bash
-npm run dev
+npm --prefix backend run dev
+npm --prefix frontend run dev
 ```
 
-You only need to run `npm run db:setup` again when:
+You only need to run `npm --prefix backend run db:setup` again when:
 
 - setting up a new database;
 - applying changes added to `schema.sql` or `seed.js`; or
@@ -295,13 +304,13 @@ Ctrl+C
 ### Database connection failed
 
 - Confirm the PostgreSQL service is running.
-- Verify the username, password, port, and database name in `.env`.
+- Verify the username, password, port, and database name in `backend/.env`.
 - Confirm that `SchoolDB` exists.
 - Try signing in to the same database through pgAdmin or `psql`.
 
 ### `password authentication failed`
 
-The username or password in `DATABASE_URL` is incorrect. Update `.env`, save it, and restart the server.
+The username or password in `DATABASE_URL` is incorrect. Update `backend/.env`, save it, and restart the server.
 
 ### `database "SchoolDB" does not exist`
 
@@ -315,11 +324,11 @@ Run the following as a PostgreSQL administrator connected to `SchoolDB`:
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 ```
 
-Then run `npm run db:setup` again. The application database user needs permission to use the extension and create the schema objects during initial setup.
+Then run `npm --prefix backend run db:setup` again. The application database user needs permission to use the extension and create the schema objects during initial setup.
 
 ### Port 3000 is already in use
 
-Change the port in `.env`:
+Change the port in `backend/.env`:
 
 ```env
 PORT=3001
@@ -332,21 +341,21 @@ Restart the server and open `http://localhost:3001`.
 Run:
 
 ```bash
-npm run db:setup
+npm --prefix backend run db:setup
 ```
 
-Then restart the server. Ensure the application and seed command use the same `.env` and therefore the same database.
+Then restart the server. Ensure the application and seed command use the same `backend/.env` and therefore the same database.
 
 ### The page loads but no records appear
 
 - Check the terminal for API or PostgreSQL errors.
-- Confirm `npm run db:setup` completed successfully.
+- Confirm `npm --prefix backend run db:setup` completed successfully.
 - Sign out and sign in again to refresh the session.
 - Check `http://localhost:3000/api/health`; a working server returns JSON containing `"ok": true`.
 
 ## Resetting demonstration data
 
-Running `npm run db:setup` is safe for refreshing core seed records, but it does not delete operational records that users have added. A complete destructive reset should only be performed deliberately with a database backup. Do not drop tables containing information that must be retained.
+Running `npm --prefix backend run db:setup` is safe for refreshing core seed records, but it does not delete operational records that users have added. A complete destructive reset should only be performed deliberately with a database backup. Do not drop tables containing information that must be retained.
 
 ## Security reminder
 

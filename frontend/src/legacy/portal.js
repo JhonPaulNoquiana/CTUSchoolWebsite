@@ -1,4 +1,5 @@
-const $ = s => document.querySelector(s), app = $('#app');
+const $ = s => document.querySelector(s);
+let app;
 const state = { token: localStorage.getItem('ctu_token'), user: null, detail: null, page: 'dashboard' };
 const icons = { dashboard: '⌂', announcements: '◉', schedule: '▦', faculty_schedule: '▦', grades: 'A+', billing: '₱', documents: '▤', clinic: '✚', profile: '○', users: '♙', students: '♙', courses: '▥', blocks: '▦', enrollments: '✓', enrollment: '✓', admissions: '＋', classes: '▦', accounts: '₱', visits: '✚' };
 const nav = { student: [['dashboard', 'Overview'], ['enrollment', 'Semester Enrollment'], ['schedule', 'My Schedule'], ['grades', 'Grades'], ['billing', 'Account & Billing'], ['documents', 'Document Requests'], ['clinic', 'Clinic Records'], ['announcements', 'Announcements'], ['profile', 'My Profile']], teacher: [['dashboard', 'Overview'], ['faculty_schedule', 'Weekly Schedule'], ['classes', 'My Classes'], ['announcements', 'Announcements'], ['profile', 'My Profile']], registrar: [['dashboard', 'Overview'], ['admissions', 'Admissions'], ['blocks', 'Block Sections'], ['enrollments', 'Enrollments'], ['documents', 'Document Requests'], ['students', 'Student Records'], ['courses', 'Programs & Courses'], ['announcements', 'Announcements'], ['profile', 'My Profile']], cashier: [['dashboard', 'Overview'], ['accounts', 'Billing & Payments'], ['students', 'Student Directory'], ['announcements', 'Announcements'], ['profile', 'My Profile']], clinic: [['dashboard', 'Overview'], ['visits', 'Patient Visits'], ['students', 'Student Directory'], ['announcements', 'Announcements'], ['profile', 'My Profile']], admin: [['dashboard', 'Overview'], ['users', 'User Accounts'], ['courses', 'Academic Setup'], ['blocks', 'Block Sections'], ['admissions', 'Admissions'], ['students', 'Student Records'], ['enrollments', 'Enrollments'], ['accounts', 'Finance'], ['visits', 'Clinic'], ['announcements', 'Announcements'], ['profile', 'My Profile']] };
@@ -86,4 +87,7 @@ document.addEventListener('submit', async e => {
     } catch (x) { toast(x.message, true) }
 });
 function logout() { state.token = null; state.user = null; localStorage.removeItem('ctu_token'); landing() }
-if (state.token) enterPortal(); else landing();
+export function mountPortal(root) {
+    app = root;
+    if (state.token) enterPortal(); else landing();
+}
