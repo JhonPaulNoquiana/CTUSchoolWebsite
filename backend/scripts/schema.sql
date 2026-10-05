@@ -62,12 +62,11 @@ ALTER TABLE payments ADD COLUMN IF NOT EXISTS status VARCHAR(20) NOT NULL DEFAUL
 ALTER TABLE payments ADD COLUMN IF NOT EXISTS voided_by BIGINT REFERENCES users(id);
 ALTER TABLE payments ADD COLUMN IF NOT EXISTS voided_at TIMESTAMPTZ;
 ALTER TABLE payments ADD COLUMN IF NOT EXISTS void_reason TEXT;
-CREATE OR REPLACE FUNCTION set_initial_student_classification() RETURNS TRIGGER AS $$ BEGIN IF NEW.admission_type='transferee' THEN NEW.enrollment_classification='irregular'; END IF; RETURN NEW; END; $$ LANGUAGE plpgsql;
+-- Classification is supplied by admission INSERTs without PL/pgSQL triggers.
 DROP TRIGGER IF EXISTS trg_initial_student_classification ON students;
-CREATE TRIGGER trg_initial_student_classification BEFORE INSERT ON students FOR EACH ROW EXECUTE FUNCTION set_initial_student_classification();
-CREATE OR REPLACE FUNCTION set_draft_enrollment_classification() RETURNS TRIGGER AS $$ BEGIN IF NEW.status='draft' THEN SELECT enrollment_classification INTO NEW.enrollment_type FROM students WHERE id=NEW.student_id; END IF; RETURN NEW; END; $$ LANGUAGE plpgsql;
 DROP TRIGGER IF EXISTS trg_draft_enrollment_classification ON enrollments;
-CREATE TRIGGER trg_draft_enrollment_classification BEFORE INSERT ON enrollments FOR EACH ROW EXECUTE FUNCTION set_draft_enrollment_classification();
+DROP FUNCTION IF EXISTS set_initial_student_classification();
+DROP FUNCTION IF EXISTS set_draft_enrollment_classification();
 CREATE INDEX IF NOT EXISTS idx_users_role ON users(role); CREATE INDEX IF NOT EXISTS idx_enrollments_status ON enrollments(status); CREATE INDEX IF NOT EXISTS idx_enrollment_items_section ON enrollment_items(class_section_id); CREATE INDEX IF NOT EXISTS idx_billing_student ON billing_items(student_id); CREATE INDEX IF NOT EXISTS idx_clinic_student ON clinic_visits(student_id); CREATE INDEX IF NOT EXISTS idx_announcements_date ON announcements(published_at DESC); CREATE INDEX IF NOT EXISTS idx_audit_date ON audit_logs(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_admissions_status ON admission_applications(status,submitted_at DESC);
 CREATE INDEX IF NOT EXISTS idx_blocks_program_year ON academic_blocks(term_id,program_id,year_level,is_active);
