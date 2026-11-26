@@ -2,6 +2,19 @@
 
 A role-based school information system for Cebu Technological University – Main Campus. It combines public new-student and transferee admissions with secure portals for students, teachers, the Registrar, Cashier, Clinic, and system administrators.
 
+## Required JavaScript concepts implemented
+
+> **This system uses all six required JavaScript concepts: Arrays, Objects, Functions, Factory, JavaScript Basics (Variables), and Singleton Pattern.**
+
+- **1. Arrays** — Role navigation lists, meeting days, and course assignments.
+- **2. Objects** — Application state, user data, and account profile objects.
+- **3. Functions** — Authentication, validation, API requests, and reusable helpers.
+- **4. Factory** — `createAccountProfile(role)` creates student, teacher, or staff profile objects using the Simple Factory pattern.
+- **5. JavaScript Basics (Variables)** — `const` and `let` store configuration, application state, and values used in workflows.
+- **6. Singleton Pattern** — One exported database pool is shared across backend modules within each Node.js process.
+
+See the [JavaScript grading checklist](#javascript-grading-checklist) for implementation details and code locations for each requirement.
+
 ## Technology stack
 
 | Layer | Technology | Purpose |
