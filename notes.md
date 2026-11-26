@@ -8,7 +8,7 @@ Install the following software before continuing:
 
 - Node.js 18 or newer
 - npm, which is included with Node.js
-- PostgreSQL
+- PostgreSQL (optional when using the configured Supabase database)
 - A PostgreSQL database administration tool such as pgAdmin, although this is optional
 
 Check that Node.js and npm are available:
@@ -18,7 +18,7 @@ node --version
 npm --version
 ```
 
-PostgreSQL must be running before the application or database setup command is started.
+The configured database must be reachable before the application or database setup command is started.
 
 ## 2. Open the project directory
 
@@ -41,7 +41,9 @@ The first command installs Express, PostgreSQL, and dotenv. The second installs 
 
 ## 4. Create the PostgreSQL database
 
-Create a database named `SchoolDB` if it does not already exist.
+The application uses the **SchoolWebsiteCTU** Supabase project at `db.pcoxrgesrnqerfbgmrwn.supabase.co`, port `5432`, database `postgres`. The existing local schema and data have been migrated; skip database creation and demo seeding when using this project. Project names and database names are separate: keep `/postgres` in the Supabase connection URL.
+
+For an optional local installation, create a database named `SchoolDB` if it does not already exist.
 
 Using PostgreSQL's command-line client:
 
@@ -53,7 +55,7 @@ If the database is already connected and working, do not create it again.
 
 ## 5. Configure environment variables
 
-Copy the backend environment template to `backend/.env`:
+For a new checkout, copy the backend environment template to `backend/.env`. Preserve an existing configured `.env`:
 
 ```powershell
 Copy-Item backend\.env.example backend\.env
@@ -62,7 +64,7 @@ Copy-Item backend\.env.example backend\.env
 Open `backend/.env` and enter the real PostgreSQL username, password, host, port, and database name:
 
 ```env
-DATABASE_URL=postgresql://postgres:YOUR_PASSWORD@localhost:5432/SchoolDB
+DATABASE_URL=postgresql://postgres:YOUR_PASSWORD@db.pcoxrgesrnqerfbgmrwn.supabase.co:5432/postgres
 TOKEN_SECRET=replace-this-with-a-long-random-secret
 PORT=3000
 ```
@@ -73,6 +75,9 @@ Important notes:
 - If the password contains characters such as `@`, `:`, `/`, `?`, or `#`, URL-encode them in `DATABASE_URL`.
 - Do not commit `.env` to source control. It is already listed in `.gitignore`.
 - Use a long, unpredictable `TOKEN_SECRET`, especially outside local development.
+- Supabase connections automatically use TLS with certificate verification and the bundled `backend/config/certs/supabase-ca.crt`. The CA is downloaded from [Supabase's certificate distribution](https://supabase-downloads.s3-ap-southeast-1.amazonaws.com/prod/ssl/prod-ca-2021.crt). See [Supabase connection documentation](https://supabase.com/docs/guides/database/connecting-to-postgres).
+- The direct Supabase endpoint requires IPv6 connectivity. On an IPv4-only host, use the session pooler connection string from the Supabase dashboard.
+- Application tables have Row Level Security enabled with browser roles denied direct access. Keep database credentials in the backend; the Express API continues to enforce the application's existing roles and authentication.
 
 Example with a different database user:
 
@@ -82,7 +87,7 @@ DATABASE_URL=postgresql://ctu_app:encoded-password@localhost:5432/SchoolDB
 
 ## 6. Create tables and seed demo data
 
-Run:
+Skip this step for the migrated Supabase database. For a fresh, empty development database, run:
 
 ```bash
 npm --prefix backend run db:setup

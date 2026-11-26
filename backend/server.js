@@ -1,6 +1,7 @@
 const path=require('path');
 require('dotenv').config({path:path.join(__dirname,'.env')});
 const express=require('express'),crypto=require('crypto'),pool=require('./config/db');
+const { createAccountProfile } = require('./factories/account-profile');
 const app=express(),PORT=process.env.PORT||3000,SECRET=process.env.TOKEN_SECRET||'ctu-main-change-this-secret';
 app.disable('x-powered-by'); app.use(express.json({limit:'1mb'}));
 const wrap=fn=>(req,res,next)=>Promise.resolve(fn(req,res,next)).catch(next), b64=v=>Buffer.from(JSON.stringify(v)).toString('base64url');
@@ -49,7 +50,32 @@ app.get('/api/announcements',auth,wrap(async(req,res)=>res.json((await pool.quer
 app.post('/api/announcements',auth,allow('admin','registrar'),wrap(async(req,res)=>{const {title,body,audience='all',category='General',is_pinned=false}=req.body;if(!title||!body)return res.status(400).json({message:'Title and message are required.'});const q=await pool.query('INSERT INTO announcements(title,body,audience,category,is_pinned,author_id)VALUES($1,$2,$3,$4,$5,$6)RETURNING *',[title,body,audience,category,is_pinned,req.user.id]);await audit(req.user.id,'CREATED_ANNOUNCEMENT','announcement',q.rows[0].id);res.status(201).json(q.rows[0])}));
 
 app.get('/api/users',auth,allow('admin'),wrap(async(req,res)=>res.json((await pool.query(`${userSql} WHERE($1='' OR u.role::text=$1)AND($2='' OR u.first_name||' '||u.last_name ILIKE '%'||$2||'%' OR u.email ILIKE '%'||$2||'%')ORDER BY u.created_at DESC`,[req.query.role||'',req.query.search||''])).rows)));
-app.post('/api/users',auth,allow('admin'),wrap(async(req,res)=>{const b=req.body;if(!b.employee_or_student_no||!b.email||!b.role||!b.first_name||!b.last_name)return res.status(400).json({message:'Complete all required account fields.'});const c=await pool.connect();try{await c.query('BEGIN');const q=await c.query(`INSERT INTO users(employee_or_student_no,email,password_hash,role,first_name,last_name)VALUES($1,LOWER($2),crypt($3,gen_salt('bf',10)),$4,$5,$6)RETURNING id,employee_or_student_no,email,role,first_name,last_name,is_active`,[b.employee_or_student_no,b.email,b.password||'CTU2026!',b.role,b.first_name,b.last_name]);if(b.role==='student')await c.query(`INSERT INTO students(user_id,program_id,year_level,section,admission_year)VALUES($1,COALESCE($2,(SELECT id FROM programs ORDER BY id LIMIT 1)),$3,$4,EXTRACT(YEAR FROM CURRENT_DATE))`,[q.rows[0].id,b.program_id||null,b.year_level||1,b.section||'A']);if(b.role==='teacher')await c.query(`INSERT INTO teachers(user_id,department_id,position)VALUES($1,COALESCE($2,(SELECT id FROM departments ORDER BY id LIMIT 1)),$3)`,[q.rows[0].id,b.department_id||null,b.position||'Instructor']);await c.query('COMMIT');await audit(req.user.id,'CREATED_USER','user',q.rows[0].id);res.status(201).json(q.rows[0])}catch(e){await c.query('ROLLBACK');throw e}finally{c.release()}}));
+app.post('/api/users', auth, allow('admin'), wrap(async (req, res) => {
+  const b = req.body;
+  if (!b.employee_or_student_no || !b.email || !b.role || !b.first_name || !b.last_name) {
+    return res.status(400).json({ message: 'Complete all required account fields.' });
+  }
+  const profile = createAccountProfile(b.role);
+  const c = await pool.connect();
+  try {
+    await c.query('BEGIN');
+    const q = await c.query(
+      `INSERT INTO users(employee_or_student_no,email,password_hash,role,first_name,last_name)
+       VALUES($1,LOWER($2),crypt($3,gen_salt('bf',10)),$4,$5,$6)
+       RETURNING id,employee_or_student_no,email,role,first_name,last_name,is_active`,
+      [b.employee_or_student_no, b.email, b.password || 'CTU2026!', b.role, b.first_name, b.last_name]
+    );
+    await profile.save(c, q.rows[0].id, b);
+    await c.query('COMMIT');
+    await audit(req.user.id, 'CREATED_USER', 'user', q.rows[0].id);
+    res.status(201).json(q.rows[0]);
+  } catch (e) {
+    await c.query('ROLLBACK');
+    throw e;
+  } finally {
+    c.release();
+  }
+}));
 app.patch('/api/users/:id/status',auth,allow('admin'),wrap(async(req,res)=>{const q=await pool.query('UPDATE users SET is_active=$1,updated_at=NOW()WHERE id=$2 RETURNING id,is_active',[!!req.body.is_active,req.params.id]);await audit(req.user.id,'CHANGED_USER_STATUS','user',req.params.id,{active:!!req.body.is_active});res.json(q.rows[0])}));
 app.get('/api/students',auth,allow('admin','registrar','clinic','cashier'),wrap(async(req,res)=>res.json((await pool.query(`SELECT s.id,s.program_id,u.employee_or_student_no student_no,u.first_name,u.last_name,u.email,p.code program,s.year_level,s.section,s.academic_status,s.admission_type,s.enrollment_classification FROM students s JOIN users u ON u.id=s.user_id LEFT JOIN programs p ON p.id=s.program_id WHERE $1='' OR u.employee_or_student_no ILIKE '%'||$1||'%' OR u.first_name||' '||u.last_name ILIKE '%'||$1||'%' ORDER BY u.last_name`,[req.query.search||''])).rows)));
 app.patch('/api/registrar/students/:id/academic-profile',auth,allow('registrar','admin'),wrap(async(req,res)=>{const b=req.body,classification=b.enrollment_classification,year=Number(b.year_level),programId=Number(b.program_id);if(!['regular','irregular'].includes(classification)||!Number.isInteger(year)||year<1||year>6||!programId)return res.status(400).json({message:'Program, valid year level, and regular/irregular classification are required.'});const c=await pool.connect();try{await c.query('BEGIN');if(!(await c.query('SELECT 1 FROM programs WHERE id=$1 AND is_active',[programId])).rowCount){const e=new Error('Selected program is not active.');e.status=400;throw e}const student=(await c.query('SELECT program_id,year_level,enrollment_classification FROM students WHERE id=$1 FOR UPDATE',[req.params.id])).rows[0];if(!student){const e=new Error('Student record not found.');e.status=404;throw e}const changed=Number(student.program_id)!==programId||Number(student.year_level)!==year||student.enrollment_classification!==classification,active=await c.query(`SELECT e.id,e.status FROM enrollments e JOIN academic_terms t ON t.id=e.term_id WHERE e.student_id=$1 AND t.is_current FOR UPDATE`,[req.params.id]);if(changed&&active.rows.some(x=>['enrolled','completed'].includes(x.status))){const e=new Error('Academic profile cannot be changed while the current enrollment is approved or completed.');e.status=409;throw e}await c.query('UPDATE students SET program_id=$1,year_level=$2,enrollment_classification=$3,section=CASE WHEN $4 THEN NULL ELSE section END WHERE id=$5',[programId,year,classification,changed,req.params.id]);if(changed)for(const e of active.rows){await c.query('DELETE FROM enrollment_items WHERE enrollment_id=$1',[e.id]);await c.query(`UPDATE enrollments SET status='draft',enrollment_type=$1,block_id=NULL,total_units=0,remarks='Academic profile changed by the Registrar. Choose a new eligible block section.' WHERE id=$2`,[classification,e.id])}await c.query('COMMIT');await audit(req.user.id,'UPDATED_STUDENT_ACADEMIC_PROFILE','student',req.params.id,{program_id:programId,year_level:year,classification});res.json({id:req.params.id,program_id:programId,year_level:year,enrollment_classification:classification})}catch(e){await c.query('ROLLBACK');throw e}finally{c.release()}}));

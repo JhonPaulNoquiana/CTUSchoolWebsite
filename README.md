@@ -185,6 +185,8 @@ Foreign keys, unique constraints, validation checks, and indexes are defined in 
 
 ## npm commands
 
+The backend is configured for the **SchoolWebsiteCTU** Supabase project using database `postgres`. Existing records have been migrated; `db:setup` is only needed for a fresh development database. The backend verifies Supabase TLS certificates using the bundled CA, and its existing API handles application authentication and authorization.
+
 ```bash
 cd backend
 npm install
@@ -198,6 +200,25 @@ npm run build    # Build frontend/dist for Express production serving
 ```
 
 For full setup instructions and demonstration credentials, see [notes.md](notes.md).
+
+## JavaScript grading checklist
+
+All six concepts are used in application workflows:
+
+| Requirement | Implementation | Where to demonstrate it |
+|---|---|---|
+| Arrays | Each role has an array of navigation entries; meeting days use array filtering and mapping. | `frontend/src/legacy/portal.js`: `nav`; `backend/server.js`: `normalizeDays()` |
+| Objects | `state` groups the current token, user, details, and page. Profile objects group role-specific behavior. | `frontend/src/legacy/portal.js`: `state`; `backend/factories/account-profile.js` |
+| Functions | Named, arrow, and asynchronous functions handle validation, API calls, and authorization. | `backend/server.js`: `normalizeDays()`, `auth()`, `audit()` |
+| Factory | `createAccountProfile(role)` selects and creates a `StudentProfile`, `TeacherProfile`, or `StaffProfile`. Each object has the same `save()` interface. | `backend/factories/account-profile.js`; called by `POST /api/users` in `backend/server.js` |
+| JavaScript basics / variables | `const` stores bindings such as `state` and `profile`; `let` holds reassigned values such as the block ID. | `frontend/src/legacy/portal.js`; `backend/server.js`: `saveAcademicBlock()` |
+| Singleton Pattern | The database module constructs and exports one shared pool. CommonJS caches the module so imports within one backend process receive the same instance. | `backend/config/db.js`: `pool` and `module.exports` |
+
+Factory demonstration: when an administrator creates a student, the factory returns a student profile object that saves the academic details. For a teacher, it returns a teacher profile object that saves faculty details. Other staff roles need only the account record. Both the account and its profile are saved within the same database transaction.
+
+The factory is a **Simple Factory**, rather than the inheritance-based Factory Method variant. The database is a **module Singleton per Node.js process**, and its shared pool manages multiple database connections.
+
+Run `npm --prefix backend test` to check profile selection, defaults, failure propagation, and shared pool identity. These tests do not connect to or modify the database.
 
 ## Production considerations
 
